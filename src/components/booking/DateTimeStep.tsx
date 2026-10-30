@@ -83,7 +83,7 @@ export default function DateTimeStep({
       </h1>
 
       <div className="flex gap-10">
-        {/* Kalendar */}
+        
         <div className="w-[300px] shrink-0">
           <div className="mb-4 flex items-center justify-between">
             <button
@@ -148,7 +148,7 @@ export default function DateTimeStep({
           </div>
         </div>
 
-        {/* Vaqt ro'yxati */}
+        
         <div className="flex-1 border-l border-gray-100 pl-8">
           <p className="mb-4 text-sm font-medium text-gray-900">
             {ichkiSana ? kunNomi(ichkiSana) + ", " + ichkiSana.getDate() + "-" + OY_NOMLARI[ichkiSana.getMonth()] : "Avval sanani tanlang"}
