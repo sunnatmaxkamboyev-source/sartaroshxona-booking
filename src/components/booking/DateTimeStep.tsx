@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
-import type { VaqtOraligi } from "./types";
+import { useEffect, useMemo, useState } from "react";
+import { bandVaqtlarniOlish } from "../../services/bandlovApi";
 
 interface DateTimeStepProps {
   tanlanganSana: Date | null;
   tanlanganVaqt: string | null;
-  bandVaqtlar?: VaqtOraligi[]; // backend ulanganda shu yerdan keladi
   onDavomEt: (sana: Date, vaqt: string) => void;
 }
 
@@ -15,15 +14,8 @@ const OY_NOMLARI = [
 
 const HAFTA_KUNLARI = ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"];
 
-const STANDART_VAQTLAR: VaqtOraligi[] = [
-  { vaqt: "09:00", band: false },
-  { vaqt: "10:00", band: false },
-  { vaqt: "11:30", band: true },
-  { vaqt: "13:00", band: false },
-  { vaqt: "14:30", band: false },
-  { vaqt: "16:00", band: false },
-  { vaqt: "17:30", band: false },
-];
+// Sartaroshxonaning barcha mumkin bo'lgan vaqt oraliqlari
+const BARCHA_VAQTLAR = ["09:00", "10:00", "11:30", "13:00", "14:30", "16:00", "17:30"];
 
 function kunNomi(sana: Date): string {
   return sana.toLocaleDateString("uz-UZ", { weekday: "long" });
@@ -32,7 +24,6 @@ function kunNomi(sana: Date): string {
 export default function DateTimeStep({
   tanlanganSana,
   tanlanganVaqt,
-  bandVaqtlar = STANDART_VAQTLAR,
   onDavomEt,
 }: DateTimeStepProps) {
   const bugun = useMemo(() => new Date(), []);
@@ -41,6 +32,36 @@ export default function DateTimeStep({
   );
   const [ichkiSana, setIchkiSana] = useState<Date | null>(tanlanganSana);
   const [ichkiVaqt, setIchkiVaqt] = useState<string | null>(tanlanganVaqt);
+
+  // Backenddan kelgan "band" vaqtlar ro'yxati
+  const [bandVaqtlar, setBandVaqtlar] = useState<string[]>([]);
+  const [yuklanmoqda, setYuklanmoqda] = useState(false);
+  const [xato, setXato] = useState<string | null>(null);
+
+  // Sana tanlanganda (yoki o'zgarganda) — backenddan shu kun uchun band vaqtlarni so'raymiz
+  useEffect(() => {
+    if (!ichkiSana) return;
+
+    let bekorQilindi = false;
+    setYuklanmoqda(true);
+    setXato(null);
+
+    bandVaqtlarniOlish(ichkiSana)
+      .then((natija) => {
+        if (!bekorQilindi) setBandVaqtlar(natija);
+      })
+      .catch(() => {
+        if (!bekorQilindi) setXato("Band vaqtlarni yuklab bo'lmadi, qayta urinib ko'ring");
+      })
+      .finally(() => {
+        if (!bekorQilindi) setYuklanmoqda(false);
+      });
+
+    // Komponent boshqa sanaga o'tsa, eski so'rov natijasini e'tiborsiz qoldiramiz
+    return () => {
+      bekorQilindi = true;
+    };
+  }, [ichkiSana]);
 
   const kunlar = useMemo(() => {
     const yil = korinishOy.getFullYear();
@@ -53,7 +74,6 @@ export default function DateTimeStep({
     return katakchalar;
   }, [korinishOy]);
 
-  // Joriy oydan oldinga o'tish mumkin emas (o'tgan oylarga band qilib bo'lmaydi)
   const joriyOyBoshida =
     korinishOy.getFullYear() === bugun.getFullYear() &&
     korinishOy.getMonth() === bugun.getMonth();
@@ -78,13 +98,13 @@ export default function DateTimeStep({
 
   return (
     <div className="max-w-xl">
-      <h1 className="mb-6 font-serif text-2xl font-semibold text-gray-900">
+      <h1 className="mb-4 font-serif text-xl font-semibold text-gray-900 sm:mb-6 sm:text-2xl">
         Sana va vaqtni tanlang
       </h1>
 
-      <div className="flex gap-10">
-        
-        <div className="w-[300px] shrink-0">
+      <div className="flex flex-col gap-6 md:flex-row md:gap-10">
+        {/* Kalendar */}
+        <div className="w-full shrink-0 md:w-[300px]">
           <div className="mb-4 flex items-center justify-between">
             <button
               type="button"
@@ -148,32 +168,43 @@ export default function DateTimeStep({
           </div>
         </div>
 
-        
-        <div className="flex-1 border-l border-gray-100 pl-8">
+        {/* Vaqt ro'yxati */}
+        <div className="flex-1 border-t border-gray-100 pt-6 md:border-l md:border-t-0 md:pl-8 md:pt-0">
           <p className="mb-4 text-sm font-medium text-gray-900">
             {ichkiSana ? kunNomi(ichkiSana) + ", " + ichkiSana.getDate() + "-" + OY_NOMLARI[ichkiSana.getMonth()] : "Avval sanani tanlang"}
           </p>
 
-          <div className="flex flex-col gap-2">
-            {ichkiSana &&
-              bandVaqtlar.map(({ vaqt, band }) => (
-                <button
-                  key={vaqt}
-                  disabled={band}
-                  onClick={() => setIchkiVaqt(vaqt)}
-                  className={`rounded-lg border px-4 py-2.5 text-left text-sm transition-colors ${
-                    band
-                      ? "cursor-not-allowed border-gray-100 text-gray-300"
-                      : ichkiVaqt === vaqt
-                      ? "border-teal-800 bg-teal-800 text-white"
-                      : "border-gray-200 text-gray-700 hover:border-teal-800"
-                  }`}
-                >
-                  {vaqt}
-                  {band && " — band"}
-                </button>
-              ))}
-          </div>
+          {yuklanmoqda && (
+            <p className="text-sm text-gray-400">Band vaqtlar yuklanmoqda...</p>
+          )}
+
+          {xato && <p className="text-sm text-red-500">{xato}</p>}
+
+          {!yuklanmoqda && !xato && (
+            <div className="flex flex-col gap-2">
+              {ichkiSana &&
+                BARCHA_VAQTLAR.map((vaqt) => {
+                  const band = bandVaqtlar.includes(vaqt);
+                  return (
+                    <button
+                      key={vaqt}
+                      disabled={band}
+                      onClick={() => setIchkiVaqt(vaqt)}
+                      className={`rounded-lg border px-4 py-2.5 text-left text-sm transition-colors ${
+                        band
+                          ? "cursor-not-allowed border-gray-100 text-gray-300"
+                          : ichkiVaqt === vaqt
+                          ? "border-teal-800 bg-teal-800 text-white"
+                          : "border-gray-200 text-gray-700 hover:border-teal-800"
+                      }`}
+                    >
+                      {vaqt}
+                      {band && " — band"}
+                    </button>
+                  );
+                })}
+            </div>
+          )}
         </div>
       </div>
 

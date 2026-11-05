@@ -20,9 +20,9 @@ export default function Sidebar({ usta, joriyBosqich, bandlov }: SidebarProps) {
   const joriyIndex = BOSQICHLAR.findIndex((b) => b.key === joriyBosqich);
 
   return (
-    <aside className="w-full max-w-[260px] shrink-0 border-r border-gray-100 p-6">
-    
-      <div className="mb-8 flex items-center gap-2">
+    <aside className="w-full shrink-0 border-b border-gray-100 p-4 sm:p-6 md:max-w-[260px] md:border-b-0 md:border-r">
+      {/* Logo */}
+      <div className="mb-4 flex items-center gap-2 md:mb-8">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-teal-800">
           <span className="font-serif text-lg font-semibold text-teal-800">S</span>
         </div>
@@ -31,18 +31,26 @@ export default function Sidebar({ usta, joriyBosqich, bandlov }: SidebarProps) {
         </span>
       </div>
 
-      
-      <div className="mb-8">
-        <img
-          src={usta.avatarUrl}
-          alt={usta.ism}
-          className="mb-3 h-12 w-12 rounded-full object-cover"
-        />
-        <p className="text-xs text-gray-400">{usta.lavozim}</p>
-        <p className="text-base font-medium text-gray-900">{usta.ism}</p>
+      {/* Usta profili */}
+      <div className="mb-4 flex items-center gap-3 md:mb-8 md:block">
+        {usta.avatarUrl ? (
+          <img
+            src={usta.avatarUrl}
+            alt={usta.ism}
+            className="h-12 w-12 shrink-0 rounded-full object-cover md:mb-3"
+          />
+        ) : (
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-teal-50 text-lg font-semibold text-teal-800 md:mb-3">
+            {usta.ism.trim() ? usta.ism.trim()[0].toUpperCase() : "?"}
+          </div>
+        )}
+        <div>
+          <p className="text-xs text-gray-400">{usta.lavozim}</p>
+          <p className="text-base font-medium text-gray-900">{usta.ism}</p>
+        </div>
       </div>
 
-      
+      {/* Bosqich indikatori */}
       <ol className="relative">
         {BOSQICHLAR.map((bosqich, index) => {
           const holat =
@@ -53,7 +61,7 @@ export default function Sidebar({ usta, joriyBosqich, bandlov }: SidebarProps) {
               : "kutilmoqda";
 
           return (
-            <li key={bosqich.key} className="relative pb-8 pl-9 last:pb-0">
+            <li key={bosqich.key} className="relative pb-5 pl-9 last:pb-0 md:pb-8">
               {index < BOSQICHLAR.length - 1 && (
                 <span
                   className={`absolute left-[11px] top-6 h-full w-px ${

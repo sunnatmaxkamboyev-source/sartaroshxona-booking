@@ -1,13 +1,15 @@
+// Booking oqimi uchun umumiy tiplar
+
 export type BookingStep = "datetime" | "details" | "confirmation";
 
 export interface Usta {
   ism: string;
-  lavozim: string; 
+  lavozim: string; // masalan: "Bosh sartarosh"
   avatarUrl: string;
 }
 
 export interface VaqtOraligi {
-  vaqt: string; 
+  vaqt: string; // "17:30"
   band: boolean;
 }
 
@@ -17,7 +19,7 @@ export interface MijozMalumotlari {
   ism: string;
   telefon: string;
   joy: JoyTuri;
-  xizmatlar: string[]; 
+  xizmatlar: string[]; // tanlangan xizmatlar ro'yxati
   izoh: string;
 }
 
@@ -27,7 +29,7 @@ export interface BandlovMalumotlari {
   mijoz: MijozMalumotlari;
 }
 
-
+// Sidebar'dagi har bir bosqich holatini belgilash uchun
 export type BosqichHolati = "tugallangan" | "faol" | "kutilmoqda";
 
 export const BOSQICHLAR: { key: BookingStep; label: string }[] = [

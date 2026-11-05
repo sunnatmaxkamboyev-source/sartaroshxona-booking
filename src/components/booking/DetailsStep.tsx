@@ -5,6 +5,7 @@ interface DetailsStepProps {
   boshlangichQiymat: MijozMalumotlari;
   onOrqaga: () => void;
   onBandQilish: (malumot: MijozMalumotlari) => void;
+  yuborilmoqda?: boolean;
 }
 
 const JOY_VARIANTLARI: { qiymat: JoyTuri; label: string }[] = [
@@ -30,6 +31,7 @@ export default function DetailsStep({
   boshlangichQiymat,
   onOrqaga,
   onBandQilish,
+  yuborilmoqda = false,
 }: DetailsStepProps) {
   const [forma, setForma] = useState<MijozMalumotlari>(boshlangichQiymat);
   const [xatolar, setXatolar] = useState(BOSH_XATOLAR);
@@ -64,11 +66,11 @@ export default function DetailsStep({
         ‹ Orqaga
       </button>
 
-      <h1 className="mb-6 font-serif text-2xl font-semibold text-gray-900">
+      <h1 className="mb-6 font-serif text-xl font-semibold text-gray-900 sm:text-2xl">
         Ma'lumotlaringizni kiriting
       </h1>
 
-      
+      {/* Ism */}
       <div className="mb-4">
         <label className="mb-1.5 block text-sm font-medium text-gray-700">
           Ism *
@@ -85,7 +87,7 @@ export default function DetailsStep({
         {xatolar.ism && <p className="mt-1 text-xs text-red-500">{xatolar.ism}</p>}
       </div>
 
-
+      {/* Telefon */}
       <div className="mb-6">
         <label className="mb-1.5 block text-sm font-medium text-gray-700">
           Telefon raqam *
@@ -104,7 +106,7 @@ export default function DetailsStep({
         )}
       </div>
 
-      
+      {/* Joy */}
       <div className="mb-6">
         <p className="mb-2 text-sm font-medium text-gray-700">Qanday xizmat kerak? *</p>
         <div className="flex flex-col gap-2">
@@ -130,7 +132,7 @@ export default function DetailsStep({
         </div>
       </div>
 
-      
+      {/* Xizmatlar */}
       <div className="mb-6">
         <p className="mb-2 text-sm font-medium text-gray-700">
           Qaysi xizmat(lar)ga yozilmoqchisiz? *
@@ -153,7 +155,7 @@ export default function DetailsStep({
         </div>
       </div>
 
-      
+      {/* Izoh */}
       <div className="mb-6">
         <label className="mb-1.5 block text-sm font-medium text-gray-700">
           Qo'shimcha izoh
@@ -169,9 +171,10 @@ export default function DetailsStep({
 
       <button
         onClick={yuborish}
-        className="w-full rounded-lg bg-teal-800 py-3 text-sm font-medium text-white transition-colors hover:bg-teal-900"
+        disabled={yuborilmoqda}
+        className="w-full rounded-lg bg-teal-800 py-3 text-sm font-medium text-white transition-colors hover:bg-teal-900 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        Band qilish
+        {yuborilmoqda ? "Yuborilmoqda..." : "Band qilish"}
       </button>
     </div>
   );

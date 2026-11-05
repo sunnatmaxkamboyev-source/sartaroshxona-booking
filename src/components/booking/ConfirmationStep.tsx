@@ -21,7 +21,6 @@ export default function ConfirmationStep({
 }: ConfirmationStepProps) {
   return (
     <div className="flex max-w-md flex-col items-center py-10 text-center">
-     
       <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400">
         <svg
           width="28"
@@ -37,7 +36,6 @@ export default function ConfirmationStep({
         </svg>
       </div>
 
-      
       <div className="mb-6 flex items-center gap-6 text-sm text-gray-700">
         <div className="flex items-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -55,7 +53,6 @@ export default function ConfirmationStep({
         </div>
       </div>
 
-      
       <p className="mb-8 text-base leading-relaxed text-gray-900">
         Rahmat, {bandlov.mijoz.ism}!
         <br />
