@@ -1,6 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-
+// Barcha so'rovlar uchun umumiy "yordamchi" funksiya
 async function sorovYuborish(
   manzil: string,
   sozlamalar: RequestInit = {}
