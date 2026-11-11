@@ -6,6 +6,7 @@ import {
   ustaRasminiYuklash,
   ustaRasminiOchirish,
 } from "../../services/ustaApi";
+import { ApiXato, rasmManzili } from "../../services/api";
 import { tokenniOqish, tokenniTozalash } from "../../services/authStorage";
 
 const MAKS_RASM_HAJMI = 2 * 1024 * 1024; // 2 MB
@@ -22,8 +23,9 @@ export default function UstaPaneli({ onChiqish }: UstaPaneliProps) {
   const [xabar, setXabar] = useState<string | null>(null);
   const [xato, setXato] = useState<string | null>(null);
   const faylInputRef = useRef<HTMLInputElement>(null);
+  const taymerRef = useRef<number | undefined>(undefined);
 
-  const token = tokenniOqish();
+  const [token] = useState(tokenniOqish);
 
   useEffect(() => {
     ustaProfiliniOlish()
@@ -32,9 +34,12 @@ export default function UstaPaneli({ onChiqish }: UstaPaneliProps) {
       .finally(() => setYuklanmoqda(false));
   }, []);
 
+  useEffect(() => () => window.clearTimeout(taymerRef.current), []);
+
   function xabarniKorsat(matn: string) {
+    window.clearTimeout(taymerRef.current);
     setXabar(matn);
-    setTimeout(() => setXabar(null), 2500);
+    taymerRef.current = window.setTimeout(() => setXabar(null), 2500);
   }
 
   function chiqish() {
@@ -42,8 +47,17 @@ export default function UstaPaneli({ onChiqish }: UstaPaneliProps) {
     onChiqish();
   }
 
-  async function rasmTanlandi(e: React.ChangeEvent<HTMLInputElement>) {
-    const fayl = e.target.files?.[0];
+  // Token eskirgan bo'lsa (401), foydalanuvchi login sahifasiga qaytariladi
+  function xatoniQayta(e: unknown, zaxira: string) {
+    if (e instanceof ApiXato && e.status === 401) {
+      chiqish();
+      return;
+    }
+    setXato(e instanceof Error ? e.message : zaxira);
+  }
+
+  async function rasmTanlandi(hodisa: React.ChangeEvent<HTMLInputElement>) {
+    const fayl = hodisa.target.files?.[0];
     if (!fayl || !token) return;
 
     setXato(null);
@@ -64,7 +78,7 @@ export default function UstaPaneli({ onChiqish }: UstaPaneliProps) {
       setUsta(yangilangan);
       xabarniKorsat("Rasm saqlandi ✓");
     } catch (e) {
-      setXato(e instanceof Error ? e.message : "Rasmni yuklashda xatolik");
+      xatoniQayta(e, "Rasmni yuklashda xatolik");
     } finally {
       setSaqlanmoqda(false);
       if (faylInputRef.current) faylInputRef.current.value = "";
@@ -73,13 +87,14 @@ export default function UstaPaneli({ onChiqish }: UstaPaneliProps) {
 
   async function rasmniOchirish() {
     if (!token) return;
+    setXato(null);
     setSaqlanmoqda(true);
     try {
       const yangilangan = await ustaRasminiOchirish(token);
       setUsta(yangilangan);
       xabarniKorsat("Rasm o'chirildi");
     } catch (e) {
-      setXato(e instanceof Error ? e.message : "Rasmni o'chirishda xatolik");
+      xatoniQayta(e, "Rasmni o'chirishda xatolik");
     } finally {
       setSaqlanmoqda(false);
     }
@@ -95,11 +110,11 @@ export default function UstaPaneli({ onChiqish }: UstaPaneliProps) {
     setXato(null);
     setSaqlanmoqda(true);
     try {
-      const yangilangan = await ustaProfiliniYangilash(token, usta.ism, usta.lavozim);
+      const yangilangan = await ustaProfiliniYangilash(token, usta.ism.trim(), usta.lavozim.trim());
       setUsta(yangilangan);
       xabarniKorsat("Ma'lumotlar saqlandi ✓");
     } catch (e) {
-      setXato(e instanceof Error ? e.message : "Saqlashda xatolik");
+      xatoniQayta(e, "Saqlashda xatolik");
     } finally {
       setSaqlanmoqda(false);
     }
@@ -120,6 +135,7 @@ export default function UstaPaneli({ onChiqish }: UstaPaneliProps) {
           Sartarosh profili
         </h1>
         <button
+          type="button"
           onClick={chiqish}
           className="text-sm text-gray-400 hover:text-red-500"
         >
@@ -131,7 +147,7 @@ export default function UstaPaneli({ onChiqish }: UstaPaneliProps) {
         <div className="relative h-20 w-20 shrink-0">
           {usta.avatarUrl ? (
             <img
-              src={`http://localhost:5000${usta.avatarUrl}`}
+              src={rasmManzili(usta.avatarUrl)}
               alt={usta.ism}
               className="h-20 w-20 rounded-full object-cover"
             />
@@ -175,8 +191,11 @@ export default function UstaPaneli({ onChiqish }: UstaPaneliProps) {
       </div>
 
       <div className="mb-4">
-        <label className="mb-1.5 block text-sm font-medium text-gray-700">Ism-familiya</label>
+        <label htmlFor="usta-ism" className="mb-1.5 block text-sm font-medium text-gray-700">
+          Ism-familiya
+        </label>
         <input
+          id="usta-ism"
           type="text"
           value={usta.ism}
           onChange={(e) => setUsta({ ...usta, ism: e.target.value })}
@@ -186,8 +205,11 @@ export default function UstaPaneli({ onChiqish }: UstaPaneliProps) {
       </div>
 
       <div className="mb-6">
-        <label className="mb-1.5 block text-sm font-medium text-gray-700">Lavozim</label>
+        <label htmlFor="usta-lavozim" className="mb-1.5 block text-sm font-medium text-gray-700">
+          Lavozim
+        </label>
         <input
+          id="usta-lavozim"
           type="text"
           value={usta.lavozim}
           onChange={(e) => setUsta({ ...usta, lavozim: e.target.value })}
@@ -200,6 +222,7 @@ export default function UstaPaneli({ onChiqish }: UstaPaneliProps) {
       {xabar && <p className="mb-4 text-sm text-emerald-600">{xabar}</p>}
 
       <button
+        type="button"
         onClick={malumotlarniSaqlash}
         disabled={saqlanmoqda}
         className="w-full rounded-lg bg-teal-800 py-3 text-sm font-medium text-white transition-colors hover:bg-teal-900 disabled:cursor-not-allowed disabled:opacity-60"

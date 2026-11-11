@@ -1,5 +1,6 @@
 import type { BookingStep, Usta, BandlovMalumotlari } from "./types";
 import { BOSQICHLAR } from "./types";
+import { rasmManzili } from "../../services/api";
 
 interface SidebarProps {
   usta: Usta;
@@ -35,7 +36,7 @@ export default function Sidebar({ usta, joriyBosqich, bandlov }: SidebarProps) {
       <div className="mb-4 flex items-center gap-3 md:mb-8 md:block">
         {usta.avatarUrl ? (
           <img
-            src={usta.avatarUrl}
+            src={rasmManzili(usta.avatarUrl)}
             alt={usta.ism}
             className="h-12 w-12 shrink-0 rounded-full object-cover md:mb-3"
           />
@@ -54,11 +55,7 @@ export default function Sidebar({ usta, joriyBosqich, bandlov }: SidebarProps) {
       <ol className="relative">
         {BOSQICHLAR.map((bosqich, index) => {
           const holat =
-            index < joriyIndex
-              ? "tugallangan"
-              : index === joriyIndex
-              ? "faol"
-              : "kutilmoqda";
+            index < joriyIndex ? "tugallangan" : index === joriyIndex ? "faol" : "kutilmoqda";
 
           return (
             <li key={bosqich.key} className="relative pb-5 pl-9 last:pb-0 md:pb-8">

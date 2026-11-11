@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { bandVaqtlarniOlish } from "../../services/bandlovApi";
+import { vaqtOtganmi } from "./sana";
 
 interface DateTimeStepProps {
   tanlanganSana: Date | null;
@@ -12,14 +13,13 @@ const OY_NOMLARI = [
   "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr",
 ];
 
-const HAFTA_KUNLARI = ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"];
+const HAFTA_KUNLARI = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
+const HAFTA_KUNI_NOMLARI = [
+  "Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba",
+];
 
 // Sartaroshxonaning barcha mumkin bo'lgan vaqt oraliqlari
 const BARCHA_VAQTLAR = ["09:00", "10:00", "11:30", "13:00", "14:30", "16:00", "17:30"];
-
-function kunNomi(sana: Date): string {
-  return sana.toLocaleDateString("uz-UZ", { weekday: "long" });
-}
 
 export default function DateTimeStep({
   tanlanganSana,
@@ -27,18 +27,19 @@ export default function DateTimeStep({
   onDavomEt,
 }: DateTimeStepProps) {
   const bugun = useMemo(() => new Date(), []);
-  const [korinishOy, setKorinishOy] = useState(
-    new Date(tanlanganSana ?? bugun)
-  );
+  const [korinishOy, setKorinishOy] = useState(() => {
+    const asos = tanlanganSana ?? bugun;
+    return new Date(asos.getFullYear(), asos.getMonth(), 1);
+  });
   const [ichkiSana, setIchkiSana] = useState<Date | null>(tanlanganSana);
   const [ichkiVaqt, setIchkiVaqt] = useState<string | null>(tanlanganVaqt);
 
-  // Backenddan kelgan "band" vaqtlar ro'yxati
   const [bandVaqtlar, setBandVaqtlar] = useState<string[]>([]);
   const [yuklanmoqda, setYuklanmoqda] = useState(false);
   const [xato, setXato] = useState<string | null>(null);
+  const [urinish, setUrinish] = useState(0);
 
-  // Sana tanlanganda (yoki o'zgarganda) — backenddan shu kun uchun band vaqtlarni so'raymiz
+  // Sana tanlanganda backenddan shu kun uchun band vaqtlarni so'raymiz
   useEffect(() => {
     if (!ichkiSana) return;
 
@@ -50,23 +51,25 @@ export default function DateTimeStep({
       .then((natija) => {
         if (!bekorQilindi) setBandVaqtlar(natija);
       })
-      .catch(() => {
-        if (!bekorQilindi) setXato("Band vaqtlarni yuklab bo'lmadi, qayta urinib ko'ring");
+      .catch((e) => {
+        if (!bekorQilindi) {
+          setXato(e instanceof Error ? e.message : "Band vaqtlarni yuklab bo'lmadi");
+        }
       })
       .finally(() => {
         if (!bekorQilindi) setYuklanmoqda(false);
       });
 
-    // Komponent boshqa sanaga o'tsa, eski so'rov natijasini e'tiborsiz qoldiramiz
+    // Boshqa sanaga o'tilsa, eski so'rov natijasi e'tiborsiz qoladi
     return () => {
       bekorQilindi = true;
     };
-  }, [ichkiSana]);
+  }, [ichkiSana, urinish]);
 
   const kunlar = useMemo(() => {
     const yil = korinishOy.getFullYear();
     const oy = korinishOy.getMonth();
-    const birinchiKun = new Date(yil, oy, 1).getDay();
+    const birinchiKun = (new Date(yil, oy, 1).getDay() + 6) % 7; // Dushanba = 0
     const oydagiKunlar = new Date(yil, oy + 1, 0).getDate();
 
     const katakchalar: (number | null)[] = Array(birinchiKun).fill(null);
@@ -91,10 +94,13 @@ export default function DateTimeStep({
 
   function sanaTanlash(kun: number) {
     if (sanaOtkmi(kun)) return;
-    const yangiSana = new Date(korinishOy.getFullYear(), korinishOy.getMonth(), kun);
-    setIchkiSana(yangiSana);
+    setIchkiSana(new Date(korinishOy.getFullYear(), korinishOy.getMonth(), kun));
     setIchkiVaqt(null);
   }
+
+  const sarlavha = ichkiSana
+    ? `${HAFTA_KUNI_NOMLARI[ichkiSana.getDay()]}, ${ichkiSana.getDate()}-${OY_NOMLARI[ichkiSana.getMonth()]}`
+    : "Avval sanani tanlang";
 
   return (
     <div className="max-w-xl">
@@ -143,22 +149,24 @@ export default function DateTimeStep({
               if (kun === null) return <span key={`bosh-${i}`} />;
 
               const sana = new Date(korinishOy.getFullYear(), korinishOy.getMonth(), kun);
-              const tanlanganmi =
-                ichkiSana &&
-                ichkiSana.toDateString() === sana.toDateString();
+              const tanlanganmi = ichkiSana?.toDateString() === sana.toDateString();
+              const bugunmi = bugun.toDateString() === sana.toDateString();
               const otkanmi = sanaOtkmi(kun);
 
               return (
                 <button
                   key={kun}
+                  type="button"
                   disabled={otkanmi}
                   onClick={() => sanaTanlash(kun)}
+                  aria-label={`${kun}-${OY_NOMLARI[korinishOy.getMonth()]}`}
+                  aria-pressed={!!tanlanganmi}
                   className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm transition-colors ${
                     tanlanganmi
                       ? "bg-teal-800 text-white"
                       : otkanmi
                       ? "text-gray-300"
-                      : "text-gray-700 hover:bg-teal-50"
+                      : `text-gray-700 hover:bg-teal-50 ${bugunmi ? "border border-teal-800" : ""}`
                   }`}
                 >
                   {kun}
@@ -170,45 +178,55 @@ export default function DateTimeStep({
 
         {/* Vaqt ro'yxati */}
         <div className="flex-1 border-t border-gray-100 pt-6 md:border-l md:border-t-0 md:pl-8 md:pt-0">
-          <p className="mb-4 text-sm font-medium text-gray-900">
-            {ichkiSana ? kunNomi(ichkiSana) + ", " + ichkiSana.getDate() + "-" + OY_NOMLARI[ichkiSana.getMonth()] : "Avval sanani tanlang"}
-          </p>
+          <p className="mb-4 text-sm font-medium text-gray-900">{sarlavha}</p>
 
-          {yuklanmoqda && (
-            <p className="text-sm text-gray-400">Band vaqtlar yuklanmoqda...</p>
+          {yuklanmoqda && <p className="text-sm text-gray-400">Band vaqtlar yuklanmoqda...</p>}
+
+          {xato && (
+            <div className="text-sm text-red-500">
+              <p>{xato}</p>
+              <button
+                type="button"
+                onClick={() => setUrinish((n) => n + 1)}
+                className="mt-2 text-teal-800 underline"
+              >
+                Qayta urinish
+              </button>
+            </div>
           )}
 
-          {xato && <p className="text-sm text-red-500">{xato}</p>}
-
-          {!yuklanmoqda && !xato && (
+          {ichkiSana && !yuklanmoqda && !xato && (
             <div className="flex flex-col gap-2">
-              {ichkiSana &&
-                BARCHA_VAQTLAR.map((vaqt) => {
-                  const band = bandVaqtlar.includes(vaqt);
-                  return (
-                    <button
-                      key={vaqt}
-                      disabled={band}
-                      onClick={() => setIchkiVaqt(vaqt)}
-                      className={`rounded-lg border px-4 py-2.5 text-left text-sm transition-colors ${
-                        band
-                          ? "cursor-not-allowed border-gray-100 text-gray-300"
-                          : ichkiVaqt === vaqt
-                          ? "border-teal-800 bg-teal-800 text-white"
-                          : "border-gray-200 text-gray-700 hover:border-teal-800"
-                      }`}
-                    >
-                      {vaqt}
-                      {band && " — band"}
-                    </button>
-                  );
-                })}
+              {BARCHA_VAQTLAR.map((vaqt) => {
+                const band = bandVaqtlar.includes(vaqt);
+                const otgan = vaqtOtganmi(ichkiSana, vaqt);
+                const ochiq = !band && !otgan;
+                return (
+                  <button
+                    key={vaqt}
+                    type="button"
+                    disabled={!ochiq}
+                    onClick={() => setIchkiVaqt(vaqt)}
+                    className={`rounded-lg border px-4 py-2.5 text-left text-sm transition-colors ${
+                      !ochiq
+                        ? "cursor-not-allowed border-gray-100 text-gray-300"
+                        : ichkiVaqt === vaqt
+                        ? "border-teal-800 bg-teal-800 text-white"
+                        : "border-gray-200 text-gray-700 hover:border-teal-800"
+                    }`}
+                  >
+                    {vaqt}
+                    {band && " — band"}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
       </div>
 
       <button
+        type="button"
         disabled={!ichkiSana || !ichkiVaqt}
         onClick={() => ichkiSana && ichkiVaqt && onDavomEt(ichkiSana, ichkiVaqt)}
         className="mt-8 w-full rounded-lg bg-teal-800 py-3 text-sm font-medium text-white transition-colors hover:bg-teal-900 disabled:cursor-not-allowed disabled:bg-gray-200"

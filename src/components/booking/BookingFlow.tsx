@@ -4,9 +4,16 @@ import DateTimeStep from "./DateTimeStep";
 import DetailsStep from "./DetailsStep";
 import ConfirmationStep from "./ConfirmationStep";
 import type { BookingStep, BandlovMalumotlari, Usta } from "./types";
-import { holatniOqish, holatniSaqlash, holatniTozalash } from "./storage";
+import {
+  eslabQolinganMijoz,
+  holatniOqish,
+  holatniSaqlash,
+  holatniTozalash,
+  mijozniEslabQolish,
+} from "./storage";
 import { bandlovYaratish } from "../../services/bandlovApi";
 import { ustaProfiliniOlish } from "../../services/ustaApi";
+import { ApiXato } from "../../services/api";
 
 const STANDART_USTA: Usta = {
   ism: "Sartarosh",
@@ -14,42 +21,45 @@ const STANDART_USTA: Usta = {
   avatarUrl: "",
 };
 
-const BOSH_MIJOZ: BandlovMalumotlari["mijoz"] = {
-  ism: "",
-  telefon: "",
-  joy: "salon",
-  xizmatlar: [],
-  izoh: "",
-};
+// Qaytib kelgan mijozning ismi va telefoni tayyor turadi
+function boshBandlov(): BandlovMalumotlari {
+  const { ism, telefon } = eslabQolinganMijoz();
+  return {
+    sana: null,
+    vaqt: null,
+    mijoz: { ism, telefon, joy: "salon", xizmatlar: [], izoh: "" },
+  };
+}
 
-const BOSH_BANDLOV: BandlovMalumotlari = {
-  sana: null,
-  vaqt: null,
-  mijoz: BOSH_MIJOZ,
-};
+function boshlangichHolat(): { bosqich: BookingStep; bandlov: BandlovMalumotlari } {
+  const saqlangan = holatniOqish();
+  if (!saqlangan) return { bosqich: "datetime", bandlov: boshBandlov() };
+
+  const { bosqich, bandlov } = saqlangan;
+  const bugunBoshi = new Date();
+  bugunBoshi.setHours(0, 0, 0, 0);
+
+  const sanaYaroqli = !!bandlov.sana && bandlov.sana >= bugunBoshi;
+  if (!sanaYaroqli || !bandlov.vaqt) {
+    return { bosqich: "datetime", bandlov: { ...bandlov, sana: null, vaqt: null } };
+  }
+  return { bosqich, bandlov };
+}
 
 export default function BookingFlow() {
   const [usta, setUsta] = useState<Usta>(STANDART_USTA);
-
-  const [bosqich, setBosqich] = useState<BookingStep>(() => {
-    const saqlangan = holatniOqish();
-    return saqlangan ? saqlangan.bosqich : "datetime";
-  });
-
-  const [bandlov, setBandlov] = useState<BandlovMalumotlari>(() => {
-    const saqlangan = holatniOqish();
-    return saqlangan ? saqlangan.bandlov : BOSH_BANDLOV;
-  });
-
+  const [boshlangich] = useState(boshlangichHolat);
+  const [bosqich, setBosqich] = useState<BookingStep>(boshlangich.bosqich);
+  const [bandlov, setBandlov] = useState<BandlovMalumotlari>(boshlangich.bandlov);
   const [yuborilmoqda, setYuborilmoqda] = useState(false);
   const [xato, setXato] = useState<string | null>(null);
 
-  // Sahifa ochilganda — usta profilini backenddan olamiz
+  // Sahifa ochilganda usta profilini backenddan olamiz
   useEffect(() => {
     ustaProfiliniOlish()
       .then((natija) => setUsta(natija))
       .catch(() => {
-        // Backend vaqtincha ishlamasa ham, sayt umuman ishlamay qolmasin
+        // Backend vaqtincha ishlamasa ham sayt ishlashda davom etadi
         console.error("Usta profilini yuklab bo'lmadi");
       });
   }, []);
@@ -59,6 +69,7 @@ export default function BookingFlow() {
   }, [bosqich, bandlov]);
 
   function sanaVaqtTanlandi(sana: Date, vaqt: string) {
+    setXato(null);
     setBandlov((oldin) => ({ ...oldin, sana, vaqt }));
     setBosqich("details");
   }
@@ -71,13 +82,18 @@ export default function BookingFlow() {
 
     try {
       await bandlovYaratish(bandlov.sana, bandlov.vaqt, mijoz);
+      mijozniEslabQolish(mijoz);
       setBandlov((oldin) => ({ ...oldin, mijoz }));
       setBosqich("confirmation");
     } catch (e) {
       const xabar = e instanceof Error ? e.message : "Xatolik yuz berdi";
       setXato(xabar);
-      // Agar vaqt band bo'lib qolgan bo'lsa — sana/vaqt tanlashga qaytaramiz
-      if (xabar.includes("band qilingan")) {
+
+      // Vaqt band bo'lib qolgan bo'lsa, sana/vaqt tanlashga qaytaramiz
+      const vaqtBand =
+        (e instanceof ApiXato && e.status === 409) || xabar.includes("band qilingan");
+      if (vaqtBand) {
+        setBandlov((oldin) => ({ ...oldin, mijoz, vaqt: null }));
         setBosqich("datetime");
       }
     } finally {
@@ -87,7 +103,7 @@ export default function BookingFlow() {
 
   function qaytaBoshlash() {
     holatniTozalash();
-    setBandlov(BOSH_BANDLOV);
+    setBandlov(boshBandlov());
     setBosqich("datetime");
     setXato(null);
   }
@@ -98,9 +114,7 @@ export default function BookingFlow() {
 
       <main className="flex-1 p-4 sm:p-6 md:p-8">
         {xato && (
-          <p className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">
-            {xato}
-          </p>
+          <p className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">{xato}</p>
         )}
 
         {bosqich === "datetime" && (
@@ -121,7 +135,11 @@ export default function BookingFlow() {
         )}
 
         {bosqich === "confirmation" && (
-          <ConfirmationStep bandlov={bandlov} onYangiBandlov={qaytaBoshlash} />
+          <ConfirmationStep
+            bandlov={bandlov}
+            ustaIsmi={usta.ism}
+            onYangiBandlov={qaytaBoshlash}
+          />
         )}
       </main>
     </div>

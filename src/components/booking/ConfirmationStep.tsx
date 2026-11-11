@@ -1,7 +1,9 @@
 import type { BandlovMalumotlari } from "./types";
+import { taqvimFayliniYuklash } from "./takvim";
 
 interface ConfirmationStepProps {
   bandlov: BandlovMalumotlari;
+  ustaIsmi: string;
   onYangiBandlov: () => void;
 }
 
@@ -17,6 +19,7 @@ function sanaFormat(sana: Date | null): string {
 
 export default function ConfirmationStep({
   bandlov,
+  ustaIsmi,
   onYangiBandlov,
 }: ConfirmationStepProps) {
   return (
@@ -61,12 +64,22 @@ export default function ConfirmationStep({
         orqali bog'lanamiz.
       </p>
 
-      <button
-        onClick={onYangiBandlov}
-        className="w-full rounded-lg bg-teal-900 py-3 text-sm font-medium text-white transition-colors hover:bg-teal-950"
-      >
-        Yangi band qilish
-      </button>
+      <div className="flex w-full flex-col gap-3">
+        <button
+          type="button"
+          onClick={() => taqvimFayliniYuklash(bandlov, ustaIsmi)}
+          className="w-full rounded-lg border border-teal-800 py-3 text-sm font-medium text-teal-800 transition-colors hover:bg-teal-50"
+        >
+          Taqvimga qo'shish
+        </button>
+        <button
+          type="button"
+          onClick={onYangiBandlov}
+          className="w-full rounded-lg bg-teal-900 py-3 text-sm font-medium text-white transition-colors hover:bg-teal-950"
+        >
+          Yangi band qilish
+        </button>
+      </div>
     </div>
   );
 }
